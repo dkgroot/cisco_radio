@@ -20,11 +20,15 @@ class Casters {
 				if (array_key_exists($category, $this->casters)) {
 					$caster = $this->casters[$category];
 				} else {
-					$caster = new Caster($category);
+					if ($format == castFormat::UniCast) {
+						$caster = new UniCaster($category);
+					} else {
+						$caster = new MultiCaster($category);
+						$caster->setMulticastAddress($this->multicast_address);
+					}
 					$this->casters[$category] = $caster;
 				}
 				$caster->setSection($section);
-				$caster->setMulticastAddress($this->multicast_address);
 				$caster->setStartingPort($this->startingport);
 			}
 		}
