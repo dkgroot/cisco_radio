@@ -1,6 +1,4 @@
 <?php
-require_once (dirname(__FILE__) . "/header.php");
-
 function get_server() {
     return Array(
         'protocol' => $_SERVER['REQUEST_SCHEME'],

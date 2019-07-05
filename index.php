@@ -1,6 +1,7 @@
 <?php
 
 openlog("radio", 0, LOG_LOCAL0);
+$TMPDIR="/tmp/";
 
 include_once(dirname(__FILE__) . "/lib/lib.php");
 include_once(dirname(__FILE__) . "/lib/casters.php");
@@ -19,6 +20,8 @@ try {
 	if(isset($_SERVER['HTTP_HOST'])) {
 		header("Content-Type: text/xml; charset=UTF-8");		// ISO-8859-1
 		header("Expires: -1");
+	} else {
+		$TMPDIR="./";
 	}
 	$response = "<?xml version='1.0' encoding='utf-8'?>\n";		// iso-8859-1
 	$response .= "<?xml-stylesheet version='1.0' href='lib/CiscoIPPhone.xslt' type='text/xsl'?>\n";
@@ -26,7 +29,7 @@ try {
 		case 'list':
 			$response .= "<CiscoIPPhoneMenu appId='{$appId}'\n";
 			$response .= "  onAppFocusLost='{$baseUrl}?devicename={$devicename}&amp;action=lost'\n";
-			$response .= "  onAppFocusGained='{$baseUrl}?devicename={$devicename}&amp;action=gained'\n";
+			//$response .= "  onAppFocusGained='{$baseUrl}?devicename={$devicename}&amp;action=gained'\n";
 			$response .= "  onAppClosed='{$baseUrl}?devicename={$devicename}&amp;action=exit'\n";
 			$response .= ">\n";
 			$response .= "<Title>{$appTitle}</Title>\n";
@@ -100,7 +103,7 @@ try {
 
 			$response .= "</CiscoIPPhoneText>\n";
 		case 'gained':
-			if (!$station || !($caster = $casters->getCaster($station))) return false;
+			/*if (!$station || !($caster = $casters->getCaster($station))) return false;
 			$uri = $caster->addListener($devicename);
 			$response .= "<CiscoIPPhoneExecute>\n";
 			$response .= "	<ExecuteItem Priority='0' URL='RTPMRx:Stop'/>\n";
@@ -108,13 +111,16 @@ try {
 				$response .= "	<ExecuteItem Priority='0' URL='RTPRx:{$uri}'/>\n";
 			}
 			$response .= "</CiscoIPPhoneExecute>\n";
+			*/
 			break;
 		case 'lost':
 			if (!$station || !($caster = $casters->getCaster($station))) return false;
 			$caster->removeListener($devicename);
+			/*
 			$response .= "<CiscoIPPhoneExecute>\n";
 			$response .= "	<ExecuteItem Priority='0' URL='RTPMRx:Stop'/>\n";
 			$response .= "</CiscoIPPhoneExecute>\n";
+			*/
 			break;
 		case 'exit':
 			if (!$station || !($caster = $casters->getCaster($station))) return false;

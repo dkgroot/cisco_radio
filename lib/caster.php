@@ -1,33 +1,69 @@
 <?php
-$PIDDIR="/tmp/";
 include_once(dirname(__FILE__) . "/process.php");
+
+abstract class castFormat {
+	const UniCast = 0;
+	const MultiCast = 1;
+	
+	function fromString($str) {
+		switch($str) {
+			case "multicast":
+				return castFormat::MultiCast;
+				break;
+			case "unicast":
+				return castFormat::UniCast;
+				break;
+		}
+	}
+}
 
 class Caster {
 	private $channel = null;
-	private $name = null;
+	private $name = "";
+	private $description = "";
 	private $url = null;
 	private $port = null;
-	private $pidfile = null;
 	private $process = null;
 	private $address = null;
-	private $multicast_address = false;
+	private $format = castFormat::UniCast;
 	private $listeners = Array();
 
-	public function Caster($category, $section, $multicast_address = false) {
-		global $PIDDIR;
+	public function Caster($category) {
+		global $TMPDIR;
 		$this->channel = $category;
-		$this->name = $section['name'];
-		$this->url = $section['url'];
-		$this->port = $section['port'];
-		$this->pidfile = $PIDDIR . "/cast_" . $this->channel . ".pid";
-		$this->process = $this->restorePidFile();
-		$this->address = $multicast_address ? $multicast_address : "234.3.2.1";
 		syslog(LOG_DEBUG, "caster: " . $this->channel ." (re)constructed");
 		return $this;
 	}
 	
+	/*
 	public function __destruct() {
-		syslog(LOG_DEBUG, "caster: destructed HIER");
+		syslog(LOG_DEBUG, "caster: destructed");
+	}
+	*/
+	
+	public function setSection($section) {
+		if (!array_key_exists('url', $section)) {
+			throw new Exception('url not provided');
+		}
+		$this->name = array_key_exists('name', $section) ? $section['name']: "";
+		$this->description = array_key_exists('description', $section) ? $section['description']: "";
+		$this->url = $section['url'];
+	}
+	
+	public function setMulticastAddress($address) {
+		if ($address) {
+			$this->format = castFormat::MultiCast;
+			$this->address = $address;
+		} else {
+			$this->format = castFormat::UniCast;
+			$this->address = null;
+		}
+		syslog(LOG_DEBUG, "caster: setMulticastAddress({$this->address})");
+	}
+
+	public function setStartingPort($port) {
+		$this->port = $port;
+		syslog(LOG_DEBUG, "caster: setStartingPort({$this->address})");
 	}
 
 	public function getChannel() {
@@ -46,16 +82,6 @@ class Caster {
 		return $this->address . ":" . $this->port;
 	}
 
-	private function restorePidFile() {
-		if (file_exists($this->pidfile)) {
-			$process = new Process();
-			if ($process->setPidFile($this->pidfile)) {
-				return $process;
-			}
-		}
-		return null;
-	}
-
 	private function isCasting() {
 		if ($this->process)
 			return $this->process->status();
@@ -63,18 +89,17 @@ class Caster {
 	}
 	
 	public function startCasting() {
-		if (!$this->isCasting()) {
-			if (file_exists($this->pidfile)) unlink($this->pidfile);
+		if (!$this->process) {
 			$cmd = "/usr/bin/ffmpeg -loglevel 0 -re -i " . $this->getUrl() . " -filter_complex aresample=8000,asetnsamples=n=160 -ab 2300 -acodec pcm_mulaw -ac 1 -vn -f rtp rtp://" . $this->getUri();
+			$this->port += 2;
 			$this->process = new Process($cmd);
-			$this->process->writePidFile($this->pidfile);
 		}
 		$this->process->start();
 		syslog(LOG_DEBUG, "start casting:" . $this->channel);
 	}
 	
 	public function stopCasting() {
-		if ($this->process && $this->process->status()) {
+		if ($this->process) {
 			$this->process->stop();
 		}
 		syslog(LOG_DEBUG, "stop casting:" . $this->channel);
@@ -82,9 +107,8 @@ class Caster {
 	
 	public function addListener($devicename) {
 		$this->listeners[$devicename] = true;
-		if (!$this->isCasting()) {
+		if (!$this->isCasting() || $this->format == castFormat::UniCast)
 			$this->startCasting();
-		}
 		return $this->getUri();
 	}
 	
@@ -94,7 +118,7 @@ class Caster {
 				unset($listener);
 			}
 		}
-		if (array_count_values($this->listeners) == 0 && $this->isCasting()) {
+		if (array_count_values($this->listeners) == 0) {
 			$this->stopCasting();
 		}
 	}

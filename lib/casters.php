@@ -3,26 +3,54 @@ include_once(dirname(__FILE__) . "/caster.php");
 
 class Casters {
 	private $casters = Array();
-	private $format = false;
+	private $format = castFormat::UniCast;
 	private $multicast_address = null;
+	private $startingport = 20480;
 	
 	public function __construct() {
 		syslog(LOG_DEBUG, "casters contructing");
 		$ini = parse_ini_file(dirname(__FILE__) . "/../channels.ini", true);
+		$this->restoreCasters();
 		foreach($ini as $category => $section) {
 			if ($category == "general") {
-				$format = isset($section['format']) ? $section['format'] : "unicast";
-				$multicast_address = isset($section['multicast_address']) ? $section['multicast_address'] : false;
+				$this->format = !empty($section['format']) ? castFormat::fromString($section['format']) : castFormat::UniCast;
+				$this->multicast_address = !empty($section['multicast_address']) ? $section['multicast_address'] : null;
+				$this->starting_port = !empty($section['starting_port']) ? (int)$section['starting_port'] : 20480;
 			} else {
-				$this->casters[$category] = new Caster($category, $section, $this->multicast_address);
+				if (array_key_exists($category, $this->casters)) {
+					$caster = $this->casters[$category];
+				} else {
+					$caster = new Caster($category);
+					$this->casters[$category] = $caster;
+				}
+				$caster->setSection($section);
+				$caster->setMulticastAddress($this->multicast_address);
+				$caster->setStartingPort($this->startingport);
 			}
 		}
-		syslog(LOG_DEBUG, "casters contructed");
+		syslog(LOG_DEBUG, "casters constructed");
 		return $this;
 	}
 	
 	function __destruct() {
+		$this->saveCasters();
 		syslog(LOG_DEBUG, "casters destructed");
+	}
+	
+	private function saveCasters() {
+		global $TMPDIR;
+		$serfile = $TMPDIR . "casters.ser";
+		file_put_contents($serfile, serialize($this->casters));
+		syslog(LOG_DEBUG, "casters saved");
+	}
+	
+	private function restoreCasters() {
+		global $TMPDIR;
+		$serfile = $TMPDIR . "casters.ser";
+		if (file_exists($serfile)) {
+			$this->casters = unserialize(file_get_contents($serfile));
+		}
+		syslog(LOG_DEBUG, "casters restored");
 	}
 	
 	public function getCasters() {
