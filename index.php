@@ -1,7 +1,13 @@
 <?php
-
 openlog("radio", 0, LOG_LOCAL0);
-$TMPDIR="/tmp/";
+
+if(isset($_SERVER['HTTP_HOST'])) {
+	header("Content-Type: text/xml; charset=UTF-8");		// ISO-8859-1
+	header("Expires: -1");
+	$TMPDIR="/tmp/";
+} else {
+	$TMPDIR="./";
+}
 
 include_once(dirname(__FILE__) . "/lib/lib.php");
 include_once(dirname(__FILE__) . "/lib/casters.php");
@@ -16,14 +22,7 @@ try {
 	$casters = new Casters();
 	$appTitle = "Radio XYZ";
 
-	//$response = "";
-	if(isset($_SERVER['HTTP_HOST'])) {
-		header("Content-Type: text/xml; charset=UTF-8");		// ISO-8859-1
-		header("Expires: -1");
-	} else {
-		$TMPDIR="./";
-	}
-	$response = "<?xml version='1.0' encoding='utf-8'?>\n";		// iso-8859-1
+	$response = "<?xml version='1.0' encoding='utf-8'?>\n";							// iso-8859-1
 	$response .= "<?xml-stylesheet version='1.0' href='lib/CiscoIPPhone.xslt' type='text/xsl'?>\n";
 	switch($action) {
 		case 'list':

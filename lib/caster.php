@@ -64,13 +64,13 @@ class Caster {
 		return $this->address . ":" . $this->port;
 	}
 
-	private function isCasting() {
+	protected function isCasting() {
 		if ($this->process)
 			return $this->process->status();
 		return false;
 	}
 	
-	public function startCasting() {
+	protected function startCasting() {
 		if (!$this->process) {
 			$cmd = "/usr/bin/ffmpeg -loglevel 0 -re -i " . $this->getUrl() . " -filter_complex aresample=8000,asetnsamples=n=160 -ab 2300 -acodec pcm_mulaw -ac 1 -vn -f rtp rtp://" . $this->getUri();
 			$this->port += 2;
@@ -80,7 +80,7 @@ class Caster {
 		syslog(LOG_DEBUG, "start casting:" . $this->channel);
 	}
 	
-	public function stopCasting() {
+	protected function stopCasting() {
 		if ($this->process) {
 			$this->process->stop();
 		}
@@ -139,26 +139,9 @@ class MultiCaster extends Caster {
 		syslog(LOG_DEBUG, "caster: setMulticastAddress({$this->address})");
 	}
 
-	public function startCasting() {
-		if (!$this->process) {
-			$cmd = "/usr/bin/ffmpeg -loglevel 0 -re -i " . $this->getUrl() . " -filter_complex aresample=8000,asetnsamples=n=160 -ab 2300 -acodec pcm_mulaw -ac 1 -vn -f rtp rtp://" . $this->getUri();
-			$this->port += 2;
-			$this->process = new Process($cmd);
-		}
-		$this->process->start();
-		syslog(LOG_DEBUG, "start casting:" . $this->channel);
-	}
-	
-	public function stopCasting() {
-		if ($this->process) {
-			$this->process->stop();
-		}
-		syslog(LOG_DEBUG, "stop casting:" . $this->channel);
-	}
-	
 	public function addListener($devicename) {
 		$this->listeners[$devicename] = true;
-		if (!$this->isCasting() || $this->format == castFormat::UniCast)
+		if (!$this->isCasting())
 			$this->startCasting();
 		return $this->getUri();
 	}
